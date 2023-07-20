@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, getDocs } from 'firebase/firestore';
 import db from './Firebase';
-import { TextField, InputAdornment, Button, Radio, RadioGroup, FormControl, FormControlLabel, FormLabel, Select, MenuItem  } from '@material-ui/core'; 
+import { TextField, InputAdornment, Button, Radio, RadioGroup, FormControl, FormControlLabel, FormLabel, 
+    Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions  } from '@material-ui/core'; 
 import PhoneIcon from '@mui/icons-material/Phone';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
 
 const Todo = () => {
   const [name, setName] = useState('');
@@ -12,12 +14,11 @@ const Todo = () => {
   const [branch, setBranch] = useState('');
   const [address, setAddress] = useState('');
   const [gender, setGender] = useState('');
-  const branchOptions = [
-    'CS',
-    'IS',
-    'EC',
-    'MECH'
-  ];
+
+  const [openDialog, setOpenDialog] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('');
+
+  const [branchOptions, setBranchOptions] = useState(['CS', 'IS', 'EC', 'MECH']);
 
   const addTodo = async (e) => {
     e.preventDefault();
@@ -62,6 +63,20 @@ const Todo = () => {
     }
   };
 
+  const handleOpenDialog = () => {
+    setOpenDialog(true);
+  };
+  
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+  };
+
+  const handleAddBranch = () => {
+    setBranchOptions((prevOptions) => [...prevOptions, newBranchName]);
+    setNewBranchName('');
+    handleCloseDialog();
+  };
+
   const phoneRegex = /^(\+\d{1,3})?\s?(\(\d{3}\)|\d{3})[-.\s]?\d{3}[-.\s]?\d{4}$/;
   const isPhoneValid = phoneRegex.test(phone);
   return (
@@ -88,13 +103,32 @@ const Todo = () => {
             </FormControl><br/>
 
             <br/>
+            
             <TextField id="outlined-basic" label="Branch" variant="outlined" value={branch}
-              onChange={(e) => setBranch(e.target.value)} select style={{ width: '300px', marginBottom: '10px' }} >
-              {branchOptions.map((option) => 
-                (
-                    <MenuItem key={option} value={option}>{option}</MenuItem>
+                onChange={(e) => setBranch(e.target.value)} select style={{ width: '265px', marginBottom: '10px' }} >
+                {branchOptions.map((option) => (
+                    <MenuItem key={option} value={option}>
+                    {option}
+                    </MenuItem>
                 ))}
-            </TextField><br/>
+            </TextField>
+            <AddCircleIcon onClick={handleOpenDialog} style={{ cursor: 'pointer', fontSize: 34,color:'green'}} />
+            <Dialog open={openDialog} onClose={handleCloseDialog}>
+            <DialogTitle>Add New Branch</DialogTitle>
+            <DialogContent>
+                <TextField autoFocus variant="outlined" margin="dense" label="Branch Name" value={newBranchName}
+                onChange={(e) => setNewBranchName(e.target.value)} style={{width:'200px'}} fullWidth />
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={handleCloseDialog} color="primary">
+                Cancel
+                </Button>
+                <Button onClick={handleAddBranch} color="primary">
+                Add
+                </Button>
+            </DialogActions>
+            </Dialog><br/>
+
             <TextField id="outlined-basic" label="Phone" type="tel" placeholder="Phone" value={phone}
               variant="outlined" onChange={(e) => setPhone(e.target.value)} 
               onKeyPress={handlePhoneKeyPress} onPaste={handlePhonePaste} style={{ width: '300px', marginBottom: '10px' }}
