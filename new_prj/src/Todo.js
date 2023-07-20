@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { collection, addDoc, getDocs } from 'firebase/firestore';
 import db from './Firebase';
 import { TextField, InputAdornment, Button, Radio, RadioGroup, FormControl, FormControlLabel, FormLabel, 
-    Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions  } from '@material-ui/core'; 
+    Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Fade, Box, Modal, Backdrop,
+    Popover,  } from '@material-ui/core'; 
 import PhoneIcon from '@mui/icons-material/Phone';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 
@@ -15,10 +16,18 @@ const Todo = () => {
   const [address, setAddress] = useState('');
   const [gender, setGender] = useState('');
 
-  const [openDialog, setOpenDialog] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
 
-  const [branchOptions, setBranchOptions] = useState(['CS', 'IS', 'EC', 'MECH']);
+  //const [branchOptions, setBranchOptions] = useState(['CS', 'IS', 'EC', 'MECH']);
+  const [branchOptions, setBranchOptions] = useState([]);
+  const [isBranchTouched, setIsBranchTouched] = useState(false);
+  const isBranchNameDuplicate = branchOptions.includes(branch);
+
+  const [anchorEl, setAnchorEl] = useState(null);
+  const isPopoverOpen = Boolean(anchorEl);
+
+  const phoneRegex = /^(\+\d{1,3})?\s?(\(\d{3}\)|\d{3})[-.\s]?\d{3}[-.\s]?\d{4}$/;
+  const isPhoneValid = phone === '' || phoneRegex.test(phone);
 
   const addTodo = async (e) => {
     e.preventDefault();
@@ -41,6 +50,7 @@ const Todo = () => {
     } catch (e) {
       console.error('Error adding document: ', e);
     }
+  
   };
 
   const handlePhoneKeyPress = (event) => 
@@ -63,22 +73,84 @@ const Todo = () => {
     }
   };
 
-  const handleOpenDialog = () => {
-    setOpenDialog(true);
+  const handleOpenPopover = (event) => 
+  {
+    setAnchorEl(event.currentTarget);
   };
+
+  const handleClosePopover = () => 
+  {
+    setAnchorEl(null);
+  };
+
+
+//   const handleAddBranch = async () => 
+//   {
+//     if (isBranchTouched && branch !== '' && branchOptions.includes(newBranchName)) {
+//         return;
+//     }
+//     if (!branchOptions.includes(newBranchName)) {
+//         try {
+//           const docRef = await addDoc(collection(db, 'BranchOptions'), {
+//             name: newBranchName,
+//           });
+//           console.log('Document written with BranchId: ', docRef.id);
+//           setBranchOptions((prevOptions) => [...prevOptions, newBranchName]);
+//           setNewBranchName('');
+//           handleClosePopover();
+//         } catch (e) {
+//           console.error('Error adding branch: ', e);
+//         }
+//     } 
+//     else 
+//     {
+//         setNewBranchName('');
+//     }
+
+//   };
+
+const handleAddBranch = async () => {
+    if (isBranchTouched && newBranchName.trim() !== '' && isBranchNameDuplicate) {
+      return;
+    }
+    if (!isBranchNameDuplicate && newBranchName.trim() !== '') {
+      try {
+        const docRef = await addDoc(collection(db, 'BranchOptions'), {
+          name: newBranchName.trim(),
+        });
+        console.log('Document written with BranchId: ', docRef.id);
+        setBranchOptions((prevOptions) => [...prevOptions, newBranchName.trim()]);
+        setNewBranchName('');
+        handleClosePopover();
+      } catch (e) {
+        console.error('Error adding branch: ', e);
+      }
+    } else {
+      setNewBranchName('');
+    }
+  };
+
   
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
+  const handleBranchBlur = () => {
+    setIsBranchTouched(true);
   };
 
-  const handleAddBranch = () => {
-    setBranchOptions((prevOptions) => [...prevOptions, newBranchName]);
-    setNewBranchName('');
-    handleCloseDialog();
+  const handleBranchChange = (e) => {
+    setBranch(e.target.value);
+    setIsBranchTouched(false);
   };
 
-  const phoneRegex = /^(\+\d{1,3})?\s?(\(\d{3}\)|\d{3})[-.\s]?\d{3}[-.\s]?\d{4}$/;
-  const isPhoneValid = phoneRegex.test(phone);
+    useEffect(() => {
+        const fetchBranchOptions = async () => {
+          const querySnapshot = await getDocs(collection(db, 'BranchOptions'));
+          const branches = querySnapshot.docs.map((doc) => doc.data().name);
+          setBranchOptions(branches);
+        };
+    
+        fetchBranchOptions();
+      }, []);
+    
+
   return (
     <section className="App" style={{ display:"flex", alignItems:"center", justifyContent:"center", height: '100vh' }}>
       <div className="todo" style={{ width: '300px', padding: '20px', border: '1px solid #ccc', borderRadius: '5px' }}>
@@ -89,7 +161,6 @@ const Todo = () => {
                 onChange={(e) => setName(e.target.value)} style={{ width: '300px', marginBottom: '10px' }} /><br/>
             <TextField id="outlined-basic" label="Age" variant="outlined" value={age}
                 onChange={(e) => setAge(e.target.value)} style={{ width: '300px', marginBottom: '10px' }} /><br/>
-
             <FormControl component="fieldset">
             <FormLabel component="legend">Gender</FormLabel>
             <RadioGroup
@@ -101,33 +172,39 @@ const Todo = () => {
               <FormControlLabel value="female" control={<Radio />} label="Female" />
             </RadioGroup>
             </FormControl><br/>
-
             <br/>
-            
             <TextField id="outlined-basic" label="Branch" variant="outlined" value={branch}
-                onChange={(e) => setBranch(e.target.value)} select style={{ width: '265px', marginBottom: '10px' }} >
+                onChange={(e) => setBranch(e.target.value)} select style={{ width: '265px', marginBottom: '10px' }} 
+                >
                 {branchOptions.map((option) => (
                     <MenuItem key={option} value={option}>
                     {option}
                     </MenuItem>
                 ))}
             </TextField>
-            <AddCircleIcon onClick={handleOpenDialog} style={{ cursor: 'pointer', fontSize: 34,color:'green'}} />
-            <Dialog open={openDialog} onClose={handleCloseDialog}>
-            <DialogTitle>Add New Branch</DialogTitle>
-            <DialogContent>
-                <TextField autoFocus variant="outlined" margin="dense" label="Branch Name" value={newBranchName}
-                onChange={(e) => setNewBranchName(e.target.value)} style={{width:'200px'}} fullWidth />
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={handleCloseDialog} color="primary">
-                Cancel
-                </Button>
-                <Button onClick={handleAddBranch} color="primary">
-                Add
-                </Button>
-            </DialogActions>
-            </Dialog><br/>
+            <AddCircleIcon onClick={handleOpenPopover} style={{ cursor: 'pointer', fontSize: 34,color:'green'}} />
+            <Popover open={isPopoverOpen}  anchorEl={anchorEl} onClose={handleClosePopover} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'center' }} >
+                <Box p={2}>
+                    <TextField autoFocus variant="outlined" margin="dense" label="Branch Name"
+                    value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)}
+                    style={{ width: '200px' }} fullWidth  onBlur={handleBranchBlur}
+                    error={isBranchTouched && newBranchName.trim() !== '' && isBranchNameDuplicate}
+                    helperText={ isBranchTouched && newBranchName.trim() !== '' && isBranchNameDuplicate ? 'Branch name already exists' : '' } />
+                    <Box mt={2} display="flex" justifyContent="center">
+                    <Button
+                        onClick={handleClosePopover}
+                        color="primary"
+                        style={{ marginRight: '10px' }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button onClick={handleAddBranch} color="primary">
+                        Add
+                    </Button>
+                    </Box>
+                </Box>
+                </Popover>
 
             <TextField id="outlined-basic" label="Phone" type="tel" placeholder="Phone" value={phone}
               variant="outlined" onChange={(e) => setPhone(e.target.value)} 
